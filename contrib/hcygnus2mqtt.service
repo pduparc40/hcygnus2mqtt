@@ -1,5 +1,5 @@
 [Unit]
-Description=Passerelle Modbus -> MQTT pour PAC MTA HCygnus
+Description=Passerelle LoRaWAN/Modbus -> Home Assistant pour PAC MTA HCygnus
 After=network-online.target
 Wants=network-online.target
 

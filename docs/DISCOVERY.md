@@ -3,6 +3,14 @@
 MTA ne publie pas la table Modbus des HCygnus Tech. La méthode ci-dessous permet de la
 reconstruire de façon fiable, par observation. Compte une soirée pour l'essentiel.
 
+**Pourquoi en local et pas via le Dragino ?** En LoRaWAN, chaque lecture coûte un uplink
+(une lecture toutes les quelques minutes au mieux) ; balayer 1500 adresses prendrait des
+jours. Avec un **adaptateur USB-RS485** branché quelques heures sur le bus, le même
+balayage prend quelques minutes, et `watch` montre les changements en direct pendant que
+tu manipules la PAC. Débranche A/B du Dragino pendant ce temps (un seul maître sur le bus).
+Ensuite, `lora-read` / `lora-scan` permettent de **confirmer** à distance quelques
+registres (voir [LORAWAN.md](LORAWAN.md)).
+
 > **Règle d'or : on ne fait que LIRE tant qu'un registre n'est pas identifié avec certitude.**
 > Écrire au hasard dans un régulateur peut modifier un paramètre de sécurité
 > (pressostats, antigel, temporisations compresseur). `allow_writes` est à `false` par défaut.
@@ -72,9 +80,9 @@ hcygnus2mqtt scan holding:0-1023 -o apres.csv
 hcygnus2mqtt diff avant.csv apres.csv
 ```
 
-## 5. Observer depuis Home Assistant (optionnel)
+## 5. Observer depuis Home Assistant (optionnel, liaison directe)
 
-Avec la passerelle lancée, ajoute dans `config.yaml` :
+Avec la passerelle lancée en `transport: modbus`, ajoute dans `config.yaml` :
 
 ```yaml
 debug:
@@ -98,6 +106,9 @@ Dans `registers/hcygnus_tech.yaml`, corrige `address`, `scale`, `bit`, `options`
 Seuls les registres `verified: true` **et** `writable: true` peuvent être écrits, et
 seulement si `allow_writes: true`. Commence par une écriture sur une consigne, avec
 une valeur proche de la valeur actuelle, en regardant l'écran de la PAC.
+
+Puis régénère la configuration du Dragino (`hcygnus2mqtt dragino`), incrémente
+`lorawan.payver` et reprogramme-le : voir [LORAWAN.md](LORAWAN.md#5-générer-et-appliquer-la-configuration-du-dragino).
 
 ## 7. Partager
 

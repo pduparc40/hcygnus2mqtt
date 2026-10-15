@@ -109,13 +109,17 @@ def scan(mb: Modbus, ranges: list[str], chunk: int, out: Path | None) -> dict:
         for addr in sorted(results):
             snapshot[(table, addr)] = results[addr]
     if out:
-        with out.open("w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(["table", "address", "value", "hex", "signed", "div10"])
-            for (table, addr), v in sorted(snapshot.items()):
-                w.writerow([table, addr, v, f"0x{v:04X}", _signed(v), _signed(v) / 10])
-        print(f"→ {len(snapshot)} valeurs écrites dans {out}")
+        save_snapshot(snapshot, out)
     return snapshot
+
+
+def save_snapshot(snapshot: dict[tuple[str, int], int], out: Path) -> None:
+    with out.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["table", "address", "value", "hex", "signed", "div10"])
+        for (table, addr), v in sorted(snapshot.items()):
+            w.writerow([table, addr, v, f"0x{v:04X}", _signed(v), _signed(v) / 10])
+    print(f"→ {len(snapshot)} valeurs écrites dans {out}")
 
 
 def load_snapshot(path: Path) -> dict[tuple[str, int], int]:

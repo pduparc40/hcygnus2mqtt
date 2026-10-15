@@ -5,3 +5,5 @@ __pycache__/
 .ruff_cache/
 config.yaml
 *.csv
+dragino/
+dragino_plan.json

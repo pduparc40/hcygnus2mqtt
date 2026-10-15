@@ -19,12 +19,22 @@ retrouver la table de registres.
 
 ## Matériel côté domotique
 
-Deux solutions qui marchent toutes les deux avec ce projet :
-
-| Option | Config | Remarques |
+| Option | Rôle | Config |
 |---|---|---|
-| Adaptateur **USB-RS485** (FTDI ou CH340) sur la machine Home Assistant / un Raspberry Pi | `modbus.type: rtu` | le moins cher ; la machine doit être à portée de câble |
-| Passerelle **RS485 ↔ Ethernet/Wi-Fi** (Waveshare, USR-TCP232, Elfin EW11…) en mode *Modbus TCP gateway* | `modbus.type: tcp` | idéal si la PAC est dehors / loin du serveur |
+| **Dragino RS485W-LB** (LoRaWAN) | installation définitive, sans câble ni Wi-Fi jusqu'à la PAC | `transport: lorawan` |
+| Adaptateur **USB-RS485** (FTDI ou CH340) sur un portable | **découverte des registres**, dépannage | `transport: modbus`, commandes `scan` / `watch` |
+| Passerelle RS485 ↔ Ethernet/Wi-Fi (Waveshare, Elfin EW11…) | alternative filaire au Dragino | `transport: modbus`, `modbus.type: tcp` |
+
+## Dragino RS485W-LB
+
+- Relie les bornes **A** et **B** du Dragino aux bornes A/B de l'interface RS485 de la PAC
+  (et la masse si les deux en ont une).
+- Les sorties 5 V / 12 V du Dragino servent à alimenter des capteurs : **ne rien y brancher**
+  ici, la PAC a sa propre alimentation.
+- Le boîtier est étanche, mais place-le hors du flux d'air du ventilateur et à l'abri
+  du ruissellement des dégivrages, antenne verticale, loin de la carrosserie métallique.
+- **Un seul maître sur le bus** : débranche le Dragino (ou retire A/B) pendant les sessions
+  de découverte avec l'adaptateur USB, sinon les deux maîtres se marchent dessus.
 
 ## Câble
 
@@ -39,5 +49,5 @@ Deux solutions qui marchent toutes les deux avec ce projet :
 
 1. Inverse A et B (la convention varie selon les fabricants — c'est la cause n°1).
 2. Vérifie l'adresse série dans le menu du régulateur (paramètre souvent nommé `Adr`, `SEr` ou `CF..`).
-3. `hcygnus2mqtt probe` essaie toutes les vitesses/parités usuelles.
+3. `hcygnus2mqtt probe` (adaptateur USB) essaie toutes les vitesses/parités usuelles.
 4. Un seul maître sur le bus : débranche tout autre superviseur (xWEB…) pendant les essais.
