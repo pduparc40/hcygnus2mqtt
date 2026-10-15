@@ -125,8 +125,8 @@ ruff check .
 ## Historique
 
 Une variante avec transport LoRaWAN (Dragino RS485W-LB) a été explorée puis écartée au
-profit d'un câble : pas de temps réel et commandes différées. Elle reste disponible sous
-l'étiquette git [`lorawan-archive`](https://github.com/pduparc40/hcygnus2mqtt/tree/lorawan-archive).
+profit d'un câble : pas de temps réel et commandes différées. Elle reste disponible dans
+la branche [`archive/lorawan`](https://github.com/pduparc40/hcygnus2mqtt/tree/archive/lorawan).
 
 ## Contribuer
 
