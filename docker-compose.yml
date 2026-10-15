@@ -1,0 +1,11 @@
+services:
+  hcygnus2mqtt:
+    build: .
+    container_name: hcygnus2mqtt
+    restart: unless-stopped
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - ./registers:/config/registers:ro
+    devices:
+      # adapte au nom de ton adaptateur : ls -l /dev/serial/by-id/
+      - /dev/ttyUSB0:/dev/ttyUSB0

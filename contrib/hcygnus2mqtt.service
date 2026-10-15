@@ -1,0 +1,16 @@
+[Unit]
+Description=Passerelle Modbus -> MQTT pour PAC MTA HCygnus
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hcygnus
+Group=dialout
+WorkingDirectory=/opt/hcygnus2mqtt
+ExecStart=/opt/hcygnus2mqtt/.venv/bin/hcygnus2mqtt run -c /opt/hcygnus2mqtt/config.yaml
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

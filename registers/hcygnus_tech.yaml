@@ -1,0 +1,189 @@
+# Table de registres — MTA HCygnus Tech (testé sur : 171)
+#
+# ⚠️  MTA ne publie pas cette table. Tout ce qui porte `verified: false` est une
+#     HYPOTHÈSE à confirmer avec `hcygnus2mqtt watch` / `scan` (voir docs/DISCOVERY.md).
+#     Les adresses ci-dessous sont des points de départ, pas des vérités.
+#
+# Hypothèses de départ :
+#  - le régulateur est un Dixell (MTA livre l'option xWEB300D EVO, produit Dixell) ;
+#  - les régulateurs Dixell transmettent les températures en entier signé ×10 (215 = 21,5 °C) ;
+#  - sur beaucoup de modèles Dixell, les paramètres utilisateur commencent au registre
+#    holding 768 dans l'ordre du manuel (1er paramètre = 768, 2e = 769, …) ;
+#  - l'écriture se fait par la fonction 16 (write multiple registers).
+#
+# Champs disponibles : key, name, table (holding|input|coil|discrete), address,
+#   type (int16|uint16|int32|uint32|bool), scale, offset, bit (0-15), unit,
+#   device_class, state_class, component (sensor|binary_sensor|number|select|switch),
+#   options {valeur: libellé}, writable, min, max, step, icon, verified, note
+#
+# Quand un registre est confirmé : passe `verified: true` et ajoute dans `note`
+# comment tu l'as vérifié (ex. "valeur = affichage Pb1 ± 0,1 °C, 3 relevés").
+
+registers:
+
+  # ------------------------------------------------------------- sondes
+  - key: water_in_temp
+    name: Température retour eau
+    table: holding
+    address: 256
+    type: int16
+    scale: 0.1
+    unit: "°C"
+    device_class: temperature
+    state_class: measurement
+    verified: false
+    note: "hypothèse : 1re sonde (Pb1) du bloc des entrées analogiques"
+
+  - key: water_out_temp
+    name: Température départ eau
+    table: holding
+    address: 257
+    type: int16
+    scale: 0.1
+    unit: "°C"
+    device_class: temperature
+    state_class: measurement
+    verified: false
+
+  - key: outdoor_temp
+    name: Température extérieure
+    table: holding
+    address: 258
+    type: int16
+    scale: 0.1
+    unit: "°C"
+    device_class: temperature
+    state_class: measurement
+    verified: false
+
+  - key: coil_temp
+    name: Température batterie / sonde de dégivrage
+    table: holding
+    address: 259
+    type: int16
+    scale: 0.1
+    unit: "°C"
+    device_class: temperature
+    state_class: measurement
+    verified: false
+
+  - key: high_pressure
+    name: Haute pression
+    table: holding
+    address: 260
+    type: int16
+    scale: 0.1
+    unit: "bar"
+    device_class: pressure
+    state_class: measurement
+    verified: false
+    note: "sur R410A en chauffage 45 °C, attendre ~27 bar ; à 0 ou figé = mauvaise adresse"
+
+  # ------------------------------------------------------------- états
+  - key: status_word
+    name: Mot d'état (brut)
+    table: holding
+    address: 288
+    type: uint16
+    icon: mdi:numeric
+    verified: false
+    note: "garder brut tant que les bits ne sont pas identifiés ; utiliser watch pendant un démarrage"
+
+  - key: compressor_on
+    name: Compresseur
+    component: binary_sensor
+    device_class: running
+    table: holding
+    address: 288
+    bit: 0
+    verified: false
+
+  - key: pump_on
+    name: Circulateur
+    component: binary_sensor
+    device_class: running
+    table: holding
+    address: 288
+    bit: 1
+    verified: false
+
+  - key: fan_on
+    name: Ventilateur
+    component: binary_sensor
+    device_class: running
+    table: holding
+    address: 288
+    bit: 2
+    verified: false
+
+  - key: defrost_active
+    name: Dégivrage en cours
+    component: binary_sensor
+    table: holding
+    address: 288
+    bit: 3
+    icon: mdi:snowflake-melt
+    verified: false
+
+  - key: alarm_active
+    name: Alarme
+    component: binary_sensor
+    device_class: problem
+    table: holding
+    address: 290
+    bit: 0
+    verified: false
+
+  - key: alarm_word
+    name: Code alarmes (brut)
+    table: holding
+    address: 290
+    type: uint16
+    icon: mdi:alert
+    verified: false
+
+  # ------------------------------------------------------------- commandes
+  - key: operating_mode
+    name: Mode de fonctionnement
+    component: select
+    table: holding
+    address: 300
+    type: uint16
+    options:
+      0: "Arrêt"
+      1: "Froid"
+      2: "Chaud"
+    writable: true
+    verified: false
+    note: "les valeurs 0/1/2 sont à confirmer en changeant le mode au clavier"
+
+  - key: setpoint_cooling
+    name: Consigne froid
+    component: number
+    table: holding
+    address: 768
+    type: int16
+    scale: 0.1
+    unit: "°C"
+    device_class: temperature
+    min: 5
+    max: 20
+    step: 0.5
+    writable: true
+    verified: false
+    note: "règle Dixell : 1er paramètre du manuel = 768 ; à confirmer"
+
+  - key: setpoint_heating
+    name: Consigne chaud
+    component: number
+    table: holding
+    address: 769
+    type: int16
+    scale: 0.1
+    unit: "°C"
+    device_class: temperature
+    min: 25
+    max: 50
+    step: 0.5
+    writable: true
+    verified: false

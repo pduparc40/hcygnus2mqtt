@@ -1,0 +1,47 @@
+# Copier en config.yaml et adapter.
+
+device:
+  id: hcygnus171            # identifiant unique, utilisé dans les topics et dans HA
+  name: PAC centrale
+  model: HCygnus Tech 171
+  unit: 1                   # adresse esclave Modbus (paramètre "Adr" du régulateur)
+
+modbus:
+  type: rtu                 # rtu (adaptateur USB-RS485) ou tcp (passerelle RS485/Ethernet)
+  port: /dev/ttyUSB0        # conseil : /dev/serial/by-id/... pour un nom stable
+  baudrate: 9600
+  parity: N
+  bytesize: 8
+  stopbits: 1
+  timeout: 1.0
+  inter_request_delay: 0.05 # pause entre trames, les régulateurs lents l'apprécient
+  # host: 192.168.1.50      # si type: tcp
+  # port: 502
+
+mqtt:
+  host: 192.168.1.10
+  port: 1883
+  username: hcygnus
+  password: change-moi
+  base_topic: hcygnus2mqtt
+  # tls: true
+
+registers: registers/hcygnus_tech.yaml
+
+options:
+  poll_interval: 10         # secondes
+  republish_every: 30       # republie toutes les valeurs tous les N cycles
+  discovery: true           # auto-découverte Home Assistant
+  include_unverified: true  # expose aussi les registres devinés (en "diagnostic" dans HA)
+  allow_writes: false       # ⚠️ laisser à false tant que la table n'est pas vérifiée
+  allow_unverified_writes: false
+  # only: [water_in_temp, water_out_temp]   # restreindre à certaines clés
+  # exclude: [high_pressure]
+
+debug:
+  # Plages publiées brutes sur hcygnus2mqtt/<id>/raw/<table>/addr/<n>
+  # → regarde-les dans MQTT Explorer pendant que tu manipules la PAC.
+  raw_ranges: []
+  # raw_ranges:
+  #   - {table: holding, start: 256, count: 48}
+  #   - {table: input, start: 0, count: 32}

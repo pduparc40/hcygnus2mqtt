@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hcygnus2mqtt"
+version = "0.1.0"
+description = "Passerelle Modbus RTU → MQTT (auto-découverte Home Assistant) pour pompes à chaleur MTA HCygnus Tech"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = [
+  "pymodbus>=3.6,<4",
+  "pyserial>=3.5",
+  "paho-mqtt>=2.0,<3",
+  "PyYAML>=6.0",
+]
+keywords = ["modbus", "mqtt", "home-assistant", "heat-pump", "dixell", "mta"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+hcygnus2mqtt = "hcygnus2mqtt.__main__:main"
+
+[tool.setuptools]
+packages = ["hcygnus2mqtt"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
