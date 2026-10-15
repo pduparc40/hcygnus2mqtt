@@ -3,11 +3,9 @@ services:
     build: .
     container_name: hcygnus2mqtt
     restart: unless-stopped
-    # le dossier contient config.yaml, dragino_plan.json et registers/
     volumes:
       - ./config.yaml:/config/config.yaml:ro
-      - ./dragino_plan.json:/config/dragino_plan.json:ro
       - ./registers:/config/registers:ro
-    # Uniquement pour transport: modbus (adaptateur USB-RS485) :
+    # Clé USB-RS485 (modbus.type: rtu) — adapte le chemin : ls /dev/serial/by-id/
     # devices:
-    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    #   - /dev/serial/by-id/usb-FTDI_XXXX-if00-port0:/dev/ttyUSB0

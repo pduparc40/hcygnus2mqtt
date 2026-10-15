@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hcygnus2mqtt"
-version = "0.2.0"
-description = "Intégration Home Assistant des PAC MTA HCygnus Tech : Modbus RTU via Dragino RS485W-LB (LoRaWAN) ou liaison directe, avec outils de découverte des registres"
+version = "0.3.0"
+description = "PAC MTA HCygnus Tech : identification de la table Modbus RTU et intégration Home Assistant via MQTT"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
@@ -15,7 +15,7 @@ dependencies = [
   "paho-mqtt>=2.0,<3",
   "PyYAML>=6.0",
 ]
-keywords = ["modbus", "mqtt", "home-assistant", "lorawan", "dragino", "ttn", "chirpstack", "heat-pump", "mta"]
+keywords = ["modbus", "mqtt", "home-assistant", "heat-pump", "dixell", "mta", "reverse-engineering"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]

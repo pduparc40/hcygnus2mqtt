@@ -1,3 +1,3 @@
-"""Intégration Home Assistant des PAC MTA HCygnus Tech (Modbus RTU via Dragino LoRaWAN ou liaison directe)."""
+"""PAC MTA HCygnus Tech : identification de la table Modbus et intégration Home Assistant."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

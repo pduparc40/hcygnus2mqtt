@@ -55,6 +55,9 @@ class Bridge:
             and r.key not in disabled
         ]
         self.by_key = {r.key: r for r in self.registers}
+        if not self.registers:
+            log.warning("Aucun registre à interroger : marque des registres `verified: true` dans %s "
+                        "ou mets options.include_unverified: true", reg_file.name)
         self.blocks = build_blocks(
             self.registers, int(opts.get("max_gap", 8)), int(opts.get("max_block", 32))
         )

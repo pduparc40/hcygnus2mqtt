@@ -3,6 +3,7 @@
   probe  : trouve vitesse / parité / adresse esclave qui répondent
   scan   : balaye des plages d'adresses et enregistre tout ce qui répond (CSV)
   watch  : relit en boucle des plages et affiche ce qui CHANGE (on agit sur la PAC en parallèle)
+  find   : retrouve dans un scan les valeurs lues sur l'afficheur de la PAC
   diff   : compare deux scans (avant / après une action sur la machine)
   read   : lit quelques registres avec plusieurs interprétations
 """
@@ -125,6 +126,60 @@ def save_snapshot(snapshot: dict[tuple[str, int], int], out: Path) -> None:
 def load_snapshot(path: Path) -> dict[tuple[str, int], int]:
     with path.open(encoding="utf-8") as f:
         return {(r["table"], int(r["address"])): int(r["value"]) for r in csv.DictReader(f)}
+
+
+SCALES = (0.1, 1.0, 0.01)
+
+
+def find_candidates(snapshot: dict[tuple[str, int], int], target: float, tol: float,
+                    ) -> list[tuple[float, str, int, int, float]]:
+    """Adresses dont la valeur, avec un facteur ×1, ×0,1 ou ×0,01, vaut `target` à `tol` près.
+
+    Renvoie (écart, table, adresse, brut, facteur) trié du plus probable au moins probable.
+    """
+    out = []
+    for (table, addr), raw in snapshot.items():
+        if table in BIT_TABLES:
+            continue
+        for scale in SCALES:
+            for value in {raw, _signed(raw)}:
+                err = abs(value * scale - target)
+                if err <= tol:
+                    out.append((err, table, addr, raw, scale))
+                    break
+    # à écart égal, on préfère ×0,1 (convention Dixell pour les températures)
+    out.sort(key=lambda c: (round(c[0], 6), SCALES.index(c[4]), c[2]))
+    return out
+
+
+def find(scan_csv: Path, targets: list[float], tol: float, limit: int = 12) -> int:
+    snap = load_snapshot(scan_csv)
+    hits: dict[int, list[float]] = {}
+    for target in targets:
+        cands = find_candidates(snap, target, tol)
+        print(f"\n{target:g} → {len(cands)} candidat(s)" + (f", {limit} premiers :" if len(cands) > limit else ""))
+        for err, table, addr, raw, scale in cands[:limit]:
+            print(f"  {table:8s} {addr:5d}  brut={raw:5d}  ×{scale:g} = {_signed(raw) * scale:g}"
+                  f"   (écart {err:.2f})")
+            hits.setdefault(addr, []).append(target)
+        if not cands:
+            print("  aucun : valeur peut-être sur 32 bits, dans une autre table, ou hors plage scannée")
+        elif len(cands) > limit:
+            print("  trop de candidats : refais une lecture quand la valeur aura changé et compare avec `diff`")
+    # des valeurs voisines sur l'afficheur sont souvent rangées côte à côte
+    addrs = sorted(hits)
+    groups = [[addrs[0]]] if addrs else []
+    for a in addrs[1:]:
+        if a - groups[-1][-1] <= 3:
+            groups[-1].append(a)
+        else:
+            groups.append([a])
+    clusters = [g for g in groups if len({t for a in g for t in hits[a]}) >= 2]
+    if clusters:
+        print("\nAdresses proches qui correspondent à plusieurs valeurs (piste prometteuse) :")
+        for g in clusters:
+            print("  " + ", ".join(f"{a}={'/'.join(f'{t:g}' for t in hits[a])}" for a in g))
+    return 0
 
 
 def diff(a: Path, b: Path) -> int:

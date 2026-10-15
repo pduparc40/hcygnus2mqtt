@@ -144,3 +144,21 @@ def test_bridge_poll_and_write(tmp_path, monkeypatch):
     b.by_key["sp"].verified = False
     b.handle_command("sp", "30")
     assert b.modbus.mem[("holding", 769)] == 470
+
+
+def test_find_candidates_prefers_tenths(tmp_path):
+    snap = {("holding", 257): 452, ("holding", 258): 0xFFDD, ("holding", 900): 45, ("coil", 1): 1}
+    c = explore.find_candidates(snap, 45.2, 0.3)
+    assert (c[0][2], c[0][4]) == (257, 0.1)
+    assert [x[2] for x in explore.find_candidates(snap, -3.5, 0.1)] == [258]
+    # 45 (×1) est aussi à 0,2 de 45,2 : il est proposé, mais après
+    assert 900 in [x[2] for x in c]
+
+
+def test_find_reports_clusters(tmp_path, capsys):
+    mb = FakeModbus({("holding", 256): 401, ("holding", 257): 452, ("holding", 258): 0xFFDD})
+    out = tmp_path / "s.csv"
+    explore.scan(mb, ["holding:256-258"], 16, out)
+    explore.find(out, [40.1, 45.2, -3.5], 0.2)
+    text = capsys.readouterr().out
+    assert "256=40.1, 257=45.2, 258=-3.5" in text

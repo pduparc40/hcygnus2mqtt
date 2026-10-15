@@ -1,61 +1,50 @@
-# Copier en config.yaml et adapter.
-
-# lorawan : PAC ── RS485 ── Dragino RS485W-LB ))) LoRaWAN ))) TTN/ChirpStack ── MQTT ── Home Assistant
-# modbus  : liaison directe (adaptateur USB-RS485) — utile pour la découverte des registres
-transport: lorawan
+# Configuration de la phase 2 (passerelle Home Assistant).
+# Copier en config.yaml et adapter. La phase 1 (identification) n'a pas besoin de ce fichier.
 
 device:
   id: hcygnus171            # identifiant unique (topics, entités HA)
   name: PAC centrale
   model: HCygnus Tech 171
-  unit: 1                   # adresse esclave Modbus de la PAC
+  unit: 1                   # adresse esclave Modbus trouvée avec `probe`
 
-# Liaison série côté PAC (sert à générer la configuration du Dragino)
-serial:
-  baudrate: 9600
-  parity: N                 # N | E | O
+modbus:
+  # --- A. clé USB-RS485 branchée sur la machine Home Assistant (dans la chaufferie)
+  type: rtu
+  port: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_XXXXXXXX-if00-port0   # nom stable : ls /dev/serial/by-id/
+  baudrate: 9600            # paramètres trouvés avec `probe`
+  parity: N
   bytesize: 8
   stopbits: 1
+  # --- B. passerelle RS485 ↔ Ethernet/Wi-Fi (Waveshare, Elfin EW11…) en mode Modbus TCP
+  # type: tcp
+  # host: 192.168.1.50
+  # port: 502
+  timeout: 1.0
+  inter_request_delay: 0.05 # pause entre trames, les régulateurs lents l'apprécient
 
-lorawan:
-  type: ttn                 # ttn | chirpstack
-  application_id: mon-appli-pac
-  device_id: dragino-pac    # TTN : ID de l'end device
-  # dev_eui: a84041xxxxxxxxxx   # ChirpStack : DevEUI
-  # tenant: ttn             # TTN : laisser "ttn" sur The Things Network public
-  mqtt:                     # broker MQTT du serveur LoRaWAN
-    host: eu1.cloud.thethings.network
-    port: 8883              # TLS
-    username: mon-appli-pac@ttn
-    password: NNSXS.XXXXXXXX   # clé API TTN avec droit "Read application traffic" + "Write downlink"
-  uplink_port: 2            # FPort des données d'interrogation du Dragino
-  downlink_port: 2
-  interval: 600             # secondes entre deux uplinks (AT+TDC)
-  payver: 1                 # version de payload (AT+PAYVER), à incrémenter quand le plan change
-  plan: dragino_plan.json   # généré par `hcygnus2mqtt dragino`
-  reply_timeout_ms: 1000    # attente de la réponse de la PAC (AT+CMDDLx)
-
-# Broker MQTT de Home Assistant (Mosquitto)
-mqtt:
+mqtt:                       # broker de Home Assistant (module Mosquitto)
   host: 192.168.1.10
   port: 1883
   username: hcygnus
   password: change-moi
   base_topic: hcygnus2mqtt
+  # tls: true
 
 registers: registers/hcygnus_tech.yaml
 
 options:
-  include_unverified: true  # interroge aussi les registres devinés (catégorie "diagnostic" dans HA)
+  poll_interval: 10         # secondes entre deux interrogations
+  republish_every: 30       # republie toutes les valeurs tous les N cycles
+  discovery: true           # auto-découverte Home Assistant
+  include_unverified: false # true : expose aussi les registres encore devinés (catégorie Diagnostic)
   allow_writes: false       # ⚠️ laisser à false tant que la table n'est pas vérifiée
   allow_unverified_writes: false
-  # only: [water_in_temp, water_out_temp, outdoor_temp]
+  # only: [water_in_temp, water_out_temp]   # restreindre à certaines clés
   # exclude: [high_pressure]
 
-# --- uniquement pour transport: modbus --------------------------------------
-modbus:
-  type: rtu
-  port: /dev/ttyUSB0
-  baudrate: 9600
-  parity: N
-  timeout: 1.0
+debug:
+  # Plages publiées brutes sur hcygnus2mqtt/<id>/raw/<table>/addr/<n>, à regarder
+  # dans MQTT Explorer pour attraper des événements rares (dégivrage, alarme).
+  raw_ranges: []
+  # raw_ranges:
+  #   - {table: holding, start: 256, count: 48}

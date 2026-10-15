@@ -1,89 +1,88 @@
 # hcygnus2mqtt
 
-Intégration **Home Assistant** des pompes à chaleur **MTA HCygnus Tech** (testé sur une
-HCygnus Tech 171) via leur liaison **Modbus RTU**, transportée en **LoRaWAN** par un
-**Dragino RS485W-LB**. Le projet fournit aussi la boîte à outils pour **reconstituer la
-table Modbus**, que le fabricant ne publie pas.
+Intégration **Home Assistant** des pompes à chaleur **MTA HCygnus Tech** (modèle de
+référence : HCygnus Tech 171) par leur liaison **Modbus RTU**.
+
+MTA ne publie pas la table Modbus de ces PAC. Le projet se déroule donc en deux phases :
+
+| | Phase 1 — Identification | Phase 2 — Home Assistant |
+|---|---|---|
+| **But** | retrouver les registres (températures, états, consignes…) | publier la PAC dans Home Assistant |
+| **Matériel** | clé USB-RS485 + ordinateur portable | clé USB-RS485 ou passerelle RS485 ↔ Ethernet/Wi-Fi, dans la chaufferie |
+| **Outils** | `probe`, `scan`, `find`, `watch`, `diff`, `read` | `run` (passerelle MQTT + auto-découverte) |
+| **Guide** | [docs/PHASE1_IDENTIFICATION.md](docs/PHASE1_IDENTIFICATION.md) | [docs/PHASE2_HOME_ASSISTANT.md](docs/PHASE2_HOME_ASSISTANT.md) |
 
 ```
- PAC MTA ─RS485─ Dragino RS485W-LB ))) LoRaWAN ))) TTN / ChirpStack ─MQTT─ hcygnus2mqtt ─MQTT─ Home Assistant
-   │
-   └─RS485─ adaptateur USB (temporaire) ── hcygnus2mqtt scan / watch   ← découverte des registres
+ PAC (extérieur) ──RS485, ~20 m── chaufferie ── clé USB / passerelle ── hcygnus2mqtt ──MQTT── Home Assistant
 ```
 
-> ⚠️ **Projet communautaire, non affilié à MTA ni à Dragino.** La table de registres
-> livrée est une **hypothèse de départ** : chaque registre est marqué `verified: false`
-> tant qu'il n'a pas été confirmé sur une vraie machine. Les écritures sont désactivées
-> par défaut.
+Câblage et vérification de l'option RS485 : [docs/CABLAGE.md](docs/CABLAGE.md).
 
-## Fonctionnalités
+> ⚠️ **Projet communautaire, non affilié à MTA.** La table livrée dans
+> `registers/hcygnus_tech.yaml` est une **hypothèse de départ** : tous ses registres sont
+> `verified: false` tant qu'ils n'ont pas été confirmés sur une vraie machine. Les
+> écritures sont désactivées par défaut.
 
-**LoRaWAN / Dragino**
-- Calcule le plan d'interrogation du Dragino (≤ 15 lectures, ≤ 46 octets par uplink, bascule
-  en multi-segments au-delà) et génère les **commandes AT** prêtes à coller
-- Décode les uplinks depuis **The Things Network** ou **ChirpStack** (MQTT)
-- Génère un formateur de payload JS pour la console TTN / ChirpStack
-- Écritures depuis HA via **downlink 0xA8** (trame Modbus FC16), confirmées par l'écho de la PAC
-- Lecture et balayage **à distance** des registres (`lora-read`, `lora-scan`)
-- Entités de diagnostic : pile du Dragino, RSSI, SNR, dernier uplink ; indisponibilité si l'uplink tarde
+## Feuille de route
 
-**Home Assistant**
-- Auto-découverte MQTT : `sensor`, `binary_sensor`, `number`, `select`, `switch`
-- Registres non vérifiés rangés en *Diagnostic*, republication au redémarrage de HA
+**Phase 1 — Identification**
+- [x] Outils de découverte : `probe`, `scan`, `find`, `watch`, `diff`, `read`
+- [ ] Vérifier la présence de l'option RS485 et relever la référence du régulateur
+- [ ] Établir la liaison (`probe`) : vitesse, parité, adresse esclave
+- [ ] Températures d'eau (entrée / sortie) et extérieure
+- [ ] Haute / basse pression
+- [ ] États : compresseur, circulateur, ventilateur, dégivrage
+- [ ] Mode de fonctionnement et marche / arrêt
+- [ ] Consignes froid / chaud
+- [ ] Alarmes
 
-**Découverte des registres (liaison directe USB-RS485)**
-- `probe` (vitesse/parité/adresse), `scan` (balayage avec découpage des plages refusées),
-  `watch` (changements en direct), `diff` (avant/après), `read`
+**Phase 2 — Home Assistant**
+- [x] Passerelle Modbus → MQTT avec auto-découverte HA
+- [x] Liaison RTU (clé USB) ou TCP (passerelle RS485 ↔ Ethernet/Wi-Fi)
+- [ ] Câble RS485 PAC → chaufferie
+- [ ] Mise en service avec la table vérifiée
+- [ ] Commandes (consignes) depuis Home Assistant
+- [ ] Tableau de bord Home Assistant d'exemple
 
 ## Installation
 
 ```bash
 git clone https://github.com/pduparc40/hcygnus2mqtt.git
 cd hcygnus2mqtt
-python3 -m venv .venv && . .venv/bin/activate
+python3 -m venv .venv
+. .venv/bin/activate          # Windows : .venv\Scripts\activate
 pip install -e .
-cp config.example.yaml config.yaml   # puis édite-le
+hcygnus2mqtt --help
 ```
 
-Ou avec Docker : `docker compose up -d` (voir `docker-compose.yml`).
+## Phase 1 en bref
 
-## Mise en route
+```bash
+hcygnus2mqtt probe --port COM3 --units 1-10                          # la PAC répond-elle ?
+hcygnus2mqtt scan --port COM3 holding:0-2047 input:0-1023 -o scan_ref.csv
+hcygnus2mqtt find scan_ref.csv 44.8 39.6 12.5                         # valeurs lues sur l'afficheur
+hcygnus2mqtt watch --port COM3 holding:0-2047 --noise 2               # puis change la consigne au clavier
+```
 
-1. **Câbler** la PAC — l'interface RS485 est une option sur cette gamme : [docs/WIRING.md](docs/WIRING.md)
-2. **Découvrir les registres** avec un adaptateur USB-RS485 : [docs/DISCOVERY.md](docs/DISCOVERY.md)
-   ```bash
-   hcygnus2mqtt probe --port /dev/ttyUSB0 --units 1-10
-   hcygnus2mqtt scan holding:0-1023 input:0-511 -o scan.csv
-   hcygnus2mqtt watch holding:0-1023 --noise 2        # puis change la consigne au clavier
-   ```
-3. **Corriger** `registers/hcygnus_tech.yaml` avec ce que tu as trouvé (`verified: true`).
-4. **Configurer le Dragino** et le serveur LoRaWAN : [docs/LORAWAN.md](docs/LORAWAN.md)
-   ```bash
-   hcygnus2mqtt dragino -c config.yaml     # plan + commandes AT + formateur JS
-   ```
-5. **Lancer la passerelle** :
-   ```bash
-   hcygnus2mqtt run -c config.yaml
-   ```
-   L'appareil « PAC centrale » apparaît dans Home Assistant (intégration MQTT).
+Exemple de sortie de `find` :
 
-## Ce qu'il faut savoir sur LoRaWAN
+```
+44.8 → 1 candidat(s)
+  holding    257  brut=  448  ×0.1 = 44.8   (écart 0.00)
+…
+Adresses proches qui correspondent à plusieurs valeurs (piste prometteuse) :
+  256=39.6, 257=44.8, 258=12.5
+```
 
-- **Pas de temps réel** : une valeur toutes les 5 à 30 minutes selon la portée radio
-  (le temps d'antenne est limité, détail dans [docs/LORAWAN.md](docs/LORAWAN.md)).
-- **Commandes différées** : une consigne envoyée depuis HA part au **prochain uplink**
-  du Dragino (classe A). Sur TTN, ~10 downlinks par jour.
-- **Taille** : ~23 registres par uplink ; au-delà, le Dragino envoie plusieurs segments.
+## Phase 2 en bref
 
-## Topics MQTT
+```bash
+cp config.example.yaml config.yaml    # liaison, broker MQTT, options
+hcygnus2mqtt run -c config.yaml
+```
 
-| Topic | Contenu |
-|---|---|
-| `hcygnus2mqtt/<id>/availability` | `online` / `offline` |
-| `hcygnus2mqtt/<id>/<clé>/state` | valeur décodée (`45.2`, `ON`, `Chaud`…) |
-| `hcygnus2mqtt/<id>/<clé>/set` | commande (si écriture autorisée) |
-| `hcygnus2mqtt/<id>/{battery,rssi,snr,last_uplink}/state` | diagnostic LoRaWAN |
-| `homeassistant/<composant>/<id>/<clé>/config` | auto-découverte |
+L'appareil « PAC centrale » apparaît dans l'intégration MQTT de Home Assistant.
+Service permanent : `contrib/hcygnus2mqtt.service` (systemd) ou `docker compose up -d`.
 
 ## Format de la table de registres
 
@@ -99,34 +98,21 @@ registers:
     device_class: temperature
     state_class: measurement
     verified: true
-    note: "comparé à l'afficheur, 3 relevés"
+    note: "= afficheur sur 3 relevés"
 
   - key: compressor_on
     name: Compresseur
-    component: binary_sensor
+    component: binary_sensor     # sensor | binary_sensor | number | select | switch
     address: 288
     bit: 0                       # un bit d'un registre d'état
 
-  - key: setpoint_heating
-    name: Consigne chaud
-    component: number
-    address: 769
-    scale: 0.1
-    min: 25
-    max: 50
-    step: 0.5
+  - key: operating_mode
+    name: Mode
+    component: select
+    address: 300
+    options: {0: "Arrêt", 1: "Froid", 2: "Chaud"}
     writable: true
 ```
-
-## Commandes
-
-| Commande | Rôle |
-|---|---|
-| `run -c config.yaml` | passerelle (LoRaWAN, ou Modbus direct si `transport: modbus`) |
-| `dragino -c config.yaml` | plan d'interrogation, commandes AT, formateur JS |
-| `lora-read` / `lora-scan` | lecture à distance via downlink 0xA8 |
-| `lora-interval <s>` | change l'intervalle d'uplink du Dragino |
-| `probe` / `scan` / `watch` / `diff` / `read` | découverte en liaison directe |
 
 ## Développement
 
@@ -136,11 +122,16 @@ pytest
 ruff check .
 ```
 
+## Historique
+
+Une variante avec transport LoRaWAN (Dragino RS485W-LB) a été explorée puis écartée au
+profit d'un câble : pas de temps réel et commandes différées. Elle reste disponible sous
+l'étiquette git [`lorawan-archive`](https://github.com/pduparc40/hcygnus2mqtt/tree/lorawan-archive).
+
 ## Contribuer
 
-La contribution la plus utile : **une table de registres vérifiée** pour ton modèle
-(020 à 301) avec la référence du régulateur, et tes retours sur le comportement réel du
-Dragino (voir la fin de [docs/LORAWAN.md](docs/LORAWAN.md)).
+La contribution la plus utile : **une table de registres vérifiée** pour ton modèle (020 à
+301), avec la référence du régulateur. Utilise le modèle d'issue « Table de registres ».
 
 ## Licence
 
